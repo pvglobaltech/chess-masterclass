@@ -1,0 +1,248 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Shared identity ──────────────────────────────────────────────
+
+enum Role {
+  PARENT
+  COACH
+  ADMIN
+}
+
+model User {
+  id            String   @id @default(uuid())
+  role          Role     @default(PARENT)
+  name          String
+  email         String   @unique
+  passwordHash  String
+  phone         String?
+  postalCode    String? // used by Module 5 reporting
+  createdAt     DateTime @default(now())
+
+  children      Child[]
+  sponsors      Sponsor[]
+  feedback      FeedbackForm[]
+}
+
+model Child {
+  id          String   @id @default(uuid())
+  parentId    String
+  parent      User     @relation(fields: [parentId], references: [id])
+  name        String
+  dob         DateTime
+  notes       String? // allergies, accommodations, etc.
+  createdAt   DateTime @default(now())
+
+  registrations Registration[]
+  coachNotes    CoachNote[]
+  progress      Progress[]
+  badges        Badge[]
+  pairingsWhite Pairing[] @relation("whiteChild")
+  pairingsBlack Pairing[] @relation("blackChild")
+}
+
+// ── Module 1: Event Registration + Parent Portal ────────────────
+
+enum AgeBracket {
+  U9   // 6-9
+  U13  // 10-13
+  U16  // 14-16
+}
+
+enum RegistrationStatus {
+  PENDING
+  CONFIRMED
+  WAITLISTED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  REFUNDED
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  date        DateTime
+  location    String
+  capacity    Int      @default(40)
+  priceCents  Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  registrations Registration[]
+  tournament    Tournament?
+  courses       Course[]
+  sponsors      Sponsor[]
+  feedback      FeedbackForm[]
+}
+
+model Registration {
+  id             String             @id @default(uuid())
+  eventId        String
+  event          Event              @relation(fields: [eventId], references: [id])
+  childId        String
+  child          Child              @relation(fields: [childId], references: [id])
+  ageBracket     AgeBracket
+  status         RegistrationStatus @default(PENDING)
+  paymentStatus  PaymentStatus      @default(UNPAID)
+  paymentRef     String? // TODO(module-1): Stripe PaymentIntent id goes here
+  waiverSignedAt DateTime?
+  qrCode         String? // generated at registration, scanned at check-in
+  checkedInAt    DateTime?
+  createdAt      DateTime           @default(now())
+
+  @@unique([eventId, childId])
+}
+
+model CoachNote {
+  id        String   @id @default(uuid())
+  childId   String
+  child     Child    @relation(fields: [childId], references: [id])
+  note      String
+  photoUrl  String?
+  createdAt DateTime @default(now())
+}
+
+// ── Module 2: Live Tournament + Results ──────────────────────────
+
+enum TournamentStatus {
+  SCHEDULED
+  LIVE
+  COMPLETE
+}
+
+model Tournament {
+  id      String           @id @default(uuid())
+  eventId String           @unique
+  event   Event            @relation(fields: [eventId], references: [id])
+  name    String
+  status  TournamentStatus @default(SCHEDULED)
+
+  rounds  Round[]
+}
+
+model Round {
+  id           String   @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  number       Int
+
+  pairings     Pairing[]
+}
+
+enum PairingResult {
+  PENDING
+  WHITE_WIN
+  BLACK_WIN
+  DRAW
+}
+
+model Pairing {
+  id           String        @id @default(uuid())
+  roundId      String
+  round        Round         @relation(fields: [roundId], references: [id])
+  boardNumber  Int
+  whiteChildId String
+  whiteChild   Child         @relation("whiteChild", fields: [whiteChildId], references: [id])
+  blackChildId String?
+  blackChild   Child?        @relation("blackChild", fields: [blackChildId], references: [id])
+  result       PairingResult @default(PENDING)
+}
+
+// ── Module 3: Learning Platform + After-Class Access ─────────────
+
+model Course {
+  id          String     @id @default(uuid())
+  eventId     String?
+  event       Event?     @relation(fields: [eventId], references: [id])
+  title       String
+  description String?
+  ageBracket  AgeBracket
+
+  lessons     Lesson[]
+}
+
+model Lesson {
+  id        String   @id @default(uuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id])
+  title     String
+  videoUrl  String? // TODO(module-3): swap placeholder for real hosted video
+  order     Int      @default(0)
+
+  progress  Progress[]
+}
+
+model Progress {
+  id            String    @id @default(uuid())
+  childId       String
+  child         Child     @relation(fields: [childId], references: [id])
+  lessonId      String
+  lesson        Lesson    @relation(fields: [lessonId], references: [id])
+  completedAt   DateTime?
+  puzzlesSolved Int       @default(0)
+
+  @@unique([childId, lessonId])
+}
+
+// ── Module 4: Sponsor + Marketing Toolkit ────────────────────────
+
+enum SponsorTier {
+  BRONZE
+  SILVER
+  GOLD
+}
+
+model Sponsor {
+  id        String      @id @default(uuid())
+  eventId   String?
+  event     Event?      @relation(fields: [eventId], references: [id])
+  name      String
+  logoUrl   String?
+  websiteUrl String?
+  tier      SponsorTier @default(BRONZE)
+  ownerId   String?
+  owner     User?       @relation(fields: [ownerId], references: [id])
+
+  donations Donation[]
+}
+
+model Donation {
+  id         String   @id @default(uuid())
+  sponsorId  String?
+  sponsor    Sponsor? @relation(fields: [sponsorId], references: [id])
+  donorName  String?
+  amountCents Int
+  message    String?
+  createdAt  DateTime @default(now())
+}
+
+model Badge {
+  id        String   @id @default(uuid())
+  childId   String
+  child     Child    @relation(fields: [childId], references: [id])
+  name      String   // e.g. "Chess Rules Champion"
+  earnedAt  DateTime @default(now())
+}
+
+// ── Module 5: Data + Reporting for Grants ────────────────────────
+
+model FeedbackForm {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id])
+  parentId  String
+  parent    User     @relation(fields: [parentId], references: [id])
+  rating    Int // 1-5
+  comments  String?
+  createdAt DateTime @default(now())
+}

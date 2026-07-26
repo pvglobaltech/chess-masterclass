@@ -34,6 +34,7 @@ export default function RootLayout({ children }) {
               <a href="/">Register</a>
               <a href="/parent-dashboard">Parent Dashboard</a>
               <a href="/live">Live Tournament</a>
+              <a href="/coach">Coach Console</a>
               <a href="/learning">Learning</a>
               <a href="/sponsors">Sponsors</a>
               <a href="/admin/reports">Reports</a>

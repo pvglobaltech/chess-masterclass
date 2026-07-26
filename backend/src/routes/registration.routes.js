@@ -4,7 +4,7 @@ const { v4: uuid } = require("uuid");
 const prisma = require("../db");
 const stripe = require("../lib/stripe");
 const { sendMail, receiptEmail } = require("../lib/mailer");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, requireRole } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -146,6 +146,26 @@ router.get("/parent/dashboard", requireAuth, async (req, res) => {
     },
   });
   res.json({ children });
+});
+
+
+// Roster for the coach console: real registered kids for an event, so a
+// coach builds pairings by picking names, not typing raw database IDs.
+router.get("/events/:eventId/roster", requireAuth, requireRole("COACH", "ADMIN"), async (req, res) => {
+  const { eventId } = req.params;
+  const registrations = await prisma.registration.findMany({
+    where: { eventId, status: "CONFIRMED" },
+    include: { child: true },
+    orderBy: { child: { name: "asc" } },
+  });
+  res.json(
+    registrations.map((r) => ({
+      registrationId: r.id,
+      childId: r.childId,
+      name: r.child.name,
+      checkedInAt: r.checkedInAt,
+    }))
+  );
 });
 
 module.exports = router;

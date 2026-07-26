@@ -105,4 +105,16 @@ router.get("/tournaments/:id/standings", async (req, res) => {
   // per child from `standings` and email/push it to their parent.
 });
 
+// Full rounds + pairings for a tournament, used by the coach console to
+// show what's pending and let a coach tap a result in for each board.
+router.get("/tournaments/:id/rounds", async (req, res) => {
+  const { id } = req.params;
+  const rounds = await prisma.round.findMany({
+    where: { tournamentId: id },
+    orderBy: { number: "asc" },
+    include: { pairings: { include: { whiteChild: true, blackChild: true }, orderBy: { boardNumber: "asc" } } },
+  });
+  res.json(rounds);
+});
+
 module.exports = router;

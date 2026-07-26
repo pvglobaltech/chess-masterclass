@@ -25,7 +25,13 @@ export const api = {
     request(`/events/${eventId}/register`, { method: "POST", body, token }),
   parentDashboard: (token) => request("/parent/dashboard", { token }),
 
-  standings: (tournamentId) => request(`/tournaments/${tournamentId}/standings`),
+standings: (tournamentId) => request(`/tournaments/${tournamentId}/standings`),
+rounds: (tournamentId) => request(`/tournaments/${tournamentId}/rounds`),
+roster: (eventId, token) => request(`/events/${eventId}/roster`, { token }),
+startTournament: (eventId, body, token) => request(`/events/${eventId}/tournament`, { method: "POST", body, token }),
+createRound: (tournamentId, body, token) => request(`/tournaments/${tournamentId}/rounds`, { method: "POST", body, token }),
+submitResult: (pairingId, body, token) => request(`/pairings/${pairingId}/result`, { method: "POST", body, token }),
+checkin: (body, token) => request(`/checkin`, { method: "POST", body, token }),
 
   courses: (ageBracket) => request(`/courses${ageBracket ? `?ageBracket=${ageBracket}` : ""}`),
 

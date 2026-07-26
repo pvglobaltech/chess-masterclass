@@ -5,6 +5,11 @@ export const metadata = {
   description: "Registration, live results, learning, sponsors, and reporting — in one place.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
@@ -19,6 +24,12 @@ export default function RootLayout({ children }) {
         <div className="container">
           <nav className="nav">
             <div className="nav-brand">♞ Chess MasterClass</div>
+
+            <input type="checkbox" id="nav-toggle" className="nav-toggle-checkbox" />
+            <label htmlFor="nav-toggle" className="nav-toggle-label" aria-label="Menu">
+              ☰
+            </label>
+
             <div className="nav-links">
               <a href="/">Register</a>
               <a href="/parent-dashboard">Parent Dashboard</a>

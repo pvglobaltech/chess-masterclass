@@ -164,6 +164,71 @@ table {
   font-size: 14px;
 }
 
+.nav-toggle-checkbox {
+  display: none;
+}
+
+.nav-toggle-label {
+  display: none;
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px 8px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 16px;
+  }
+  h1 {
+    font-size: 28px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .nav {
+    flex-wrap: wrap;
+    padding: 14px 0;
+  }
+  .nav-brand {
+    font-size: 18px;
+  }
+  .nav-toggle-label {
+    display: block;
+  }
+  .nav-links {
+    display: none;
+    width: 100%;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 12px;
+  }
+  .nav-toggle-checkbox:checked ~ .nav-links {
+    display: flex;
+  }
+  .nav-links a {
+    padding: 10px 4px;
+    border-bottom: 1px solid var(--line);
+  }
+  .card {
+    padding: 16px;
+  }
+  .btn {
+    width: 100%;
+    text-align: center;
+  }
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 th,
 td {
   text-align: left;

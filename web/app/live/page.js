@@ -39,30 +39,33 @@ export default function LivePage() {
       )}
 
       {error && <p>{error}</p>}
-      {!standings && !error && <p>Loading live standings…</p>}
+      {!standings && !error && <p>Loading live standings...</p>}
 
       {standings && (
         <div className="card">
           <p style={{ color: "var(--slate)", fontSize: 14 }}>
             Round {standings.roundsPlayed} · refreshes automatically
           </p>
-          <table>
-            <thead>
-              <tr><th>Rank</th><th>Player</th><th>Points</th></tr>
-            </thead>
-            <tbody>
-              {standings.standings.map((s, i) => (
-                <tr key={s.childId}>
-                  <td className="data">{i + 1}</td>
-                  <td>{s.name}</td>
-                  <td className="data">{s.points}</td>
-                </tr>
-              ))}
-              {standings.standings.length === 0 && (
-                <tr><td colSpan={3} style={{ color: "var(--slate)" }}>No results entered yet.</td></tr>
-              )}
-            </tbody>
-          </table>
+
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr><th>Rank</th><th>Player</th><th>Points</th></tr>
+              </thead>
+              <tbody>
+                {standings.standings.map((s, i) => (
+                  <tr key={s.childId}>
+                    <td className="data">{i + 1}</td>
+                    <td>{s.name}</td>
+                    <td className="data">{s.points}</td>
+                  </tr>
+                ))}
+                {standings.standings.length === 0 && (
+                  <tr><td colSpan={3} style={{ color: "var(--slate)" }}>No results entered yet.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
       {/* TODO(module-2): add a "projector mode" full-screen view and

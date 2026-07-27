@@ -35,6 +35,9 @@ export default function LearningPage() {
       ))}
 
       {courses.length === 0 && <p>No courses published yet.</p>}
+      <p style={{ marginTop: 32 }}>
+  Want to test what you've learned? Try the <a href="/quiz">Chess Rules Test</a> and earn a badge.
+</p>
     </div>
   );
 }

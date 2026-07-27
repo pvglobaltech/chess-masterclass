@@ -58,7 +58,7 @@ export default function SponsorsPage() {
       </div>
 
       <p style={{ marginTop: 32 }}>
-        Kids can also test their knowledge with the <a href="/learning">Chess Rules Test</a> and earn a badge.
+       Kids can also test their knowledge with the <a href="/quiz">Chess Rules Test</a> and earn a badge.
       </p>
     </div>
   );

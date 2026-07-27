@@ -33,7 +33,11 @@ createRound: (tournamentId, body, token) => request(`/tournaments/${tournamentId
 submitResult: (pairingId, body, token) => request(`/pairings/${pairingId}/result`, { method: "POST", body, token }),
 checkin: (body, token) => request(`/checkin`, { method: "POST", body, token }),
 
-  courses: (ageBracket) => request(`/courses${ageBracket ? `?ageBracket=${ageBracket}` : ""}`),
+ courses: (ageBracket) => request(`/courses${ageBracket ? `?ageBracket=${ageBracket}` : ""}`),
+courseLessons: (childId, courseId, token) => request(`/children/${childId}/courses/${courseId}/lessons`, { token }),
+markProgress: (body, token) => request("/progress", { method: "POST", body, token }),
+createCourse: (body, token) => request("/courses", { method: "POST", body, token }),
+addLesson: (courseId, body, token) => request(`/courses/${courseId}/lessons`, { method: "POST", body, token }),
 
   sponsors: (eventId) => request(`/sponsors${eventId ? `?eventId=${eventId}` : ""}`),
   quiz: () => request("/quiz"),

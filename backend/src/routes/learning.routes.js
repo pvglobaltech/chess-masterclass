@@ -73,4 +73,19 @@ router.post("/courses", requireAuth, requireRole("COACH", "ADMIN"), async (req, 
   res.status(201).json(course);
 });
 
+// Add one lesson to an already-existing course — this is what a coach uses
+// week to week, as opposed to /courses above which creates a brand new course.
+router.post("/courses/:courseId/lessons", requireAuth, requireRole("COACH", "ADMIN"), async (req, res) => {
+  const { courseId } = req.params;
+  const { title, videoUrl } = req.body;
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) return res.status(404).json({ error: "Course not found" });
+
+  const existingCount = await prisma.lesson.count({ where: { courseId } });
+  const lesson = await prisma.lesson.create({
+    data: { courseId, title, videoUrl, order: existingCount },
+  });
+  res.status(201).json(lesson);
+});
+
 module.exports = router;

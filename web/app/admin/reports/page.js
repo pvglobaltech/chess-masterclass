@@ -45,7 +45,7 @@ export default function ReportsPage() {
           <input required type="password" value={creds.password} onChange={(e) => setCreds({ ...creds, password: e.target.value })} />
           <button className="btn btn-primary" style={{ marginTop: 16 }}>Sign in</button>
         </form>
-        <p style={{ fontSize: 13, color: "var(--slate)" }}>Seed admin: admin@chessmasterclass.ca / password123</p>
+        //<p style={{ fontSize: 13, color: "var(--slate)" }}>Seed admin: admin@chessmasterclass.ca / password123</p>
       </div>
     );
   }

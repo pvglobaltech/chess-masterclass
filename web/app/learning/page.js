@@ -2,262 +2,164 @@
 
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
+import { toEmbedUrl } from "../../lib/video";
 
-export default function CoachConsole() {
+export default function LearningPage() {
+  const [courses, setCourses] = useState([]);
   const [token, setToken] = useState(null);
-  const [creds, setCreds] = useState({ email: "", password: "" });
-  const [loginError, setLoginError] = useState(null);
+  const [children, setChildren] = useState([]);
+  const [childId, setChildId] = useState("");
 
-  const [events, setEvents] = useState([]);
-  const [eventId, setEventId] = useState("");
-  const [roster, setRoster] = useState([]);
-  const [rounds, setRounds] = useState([]);
-  const [error, setError] = useState(null);
-
-  const [pairingRows, setPairingRows] = useState([{ whiteChildId: "", blackChildId: "" }]);
+  const [expandedCourseId, setExpandedCourseId] = useState(null);
+  const [lessonsByCourse, setLessonsByCourse] = useState({});
+  const [loadingCourseId, setLoadingCourseId] = useState(null);
 
   useEffect(() => {
-    const saved = typeof window !== "undefined" && localStorage.getItem("coachToken");
-    if (saved) setToken(saved);
+    api.courses().then(setCourses);
   }, []);
 
   useEffect(() => {
-    api.events().then(setEvents).catch((e) => setError(e.message));
+    const saved = typeof window !== "undefined" && localStorage.getItem("token");
+    setToken(saved || null);
   }, []);
 
-  const selectedEvent = events.find((e) => e.id === eventId);
-  const tournamentId = selectedEvent?.tournament?.id;
-
-  async function refreshEventData() {
-    const evs = await api.events();
-    setEvents(evs);
-  }
-
   useEffect(() => {
-    if (!eventId || !token) return;
-    api.roster(eventId, token).then(setRoster).catch((e) => setError(e.message));
-  }, [eventId, token]);
+    if (!token) return;
+    api.parentDashboard(token).then((res) => {
+      setChildren(res.children);
+      if (res.children.length === 1) setChildId(res.children[0].id);
+    });
+  }, [token]);
 
-  useEffect(() => {
-    if (!tournamentId) return setRounds([]);
-    const load = () => api.rounds(tournamentId).then(setRounds).catch((e) => setError(e.message));
-    load();
-    const interval = setInterval(load, 5000);
-    return () => clearInterval(interval);
-  }, [tournamentId]);
+  async function handleViewLessons(course) {
+    if (expandedCourseId === course.id) {
+      setExpandedCourseId(null);
+      return;
+    }
+    setExpandedCourseId(course.id);
+    if (lessonsByCourse[course.id]) return;
 
-  async function handleLogin(e) {
-    e.preventDefault();
-    setLoginError(null);
+    if (!token || !childId) return;
+
+    setLoadingCourseId(course.id);
     try {
-      const res = await api.login(creds);
-      if (res.user.role !== "ADMIN" && res.user.role !== "COACH") {
-        throw new Error("This console is for coaches and admins only.");
-      }
-      localStorage.setItem("coachToken", res.token);
-      setToken(res.token);
+      const lessons = await api.courseLessons(childId, course.id, token);
+      setLessonsByCourse((prev) => ({ ...prev, [course.id]: lessons }));
     } catch (err) {
-      setLoginError(err.message);
+      setLessonsByCourse((prev) => ({ ...prev, [course.id]: { locked: true, message: err.message } }));
+    } finally {
+      setLoadingCourseId(null);
     }
   }
 
-  async function handleStartTournament() {
-    setError(null);
-    try {
-      await api.startTournament(eventId, { name: `${selectedEvent.name} Tournament` }, token);
-      await refreshEventData();
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
-  async function handleCheckIn(registrationId) {
-    setError(null);
-    try {
-      await api.checkin({ registrationId }, token);
-      const updated = await api.roster(eventId, token);
-      setRoster(updated);
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
-  function updatePairingRow(index, field, value) {
-    setPairingRows((rows) => rows.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
-  }
-
-  function addPairingRow() {
-    setPairingRows((rows) => [...rows, { whiteChildId: "", blackChildId: "" }]);
-  }
-
-  function removePairingRow(index) {
-    setPairingRows((rows) => rows.filter((_, i) => i !== index));
-  }
-
-  async function handleCreateRound(e) {
-    e.preventDefault();
-    setError(null);
-    const pairings = pairingRows
-      .filter((r) => r.whiteChildId)
-      .map((r, i) => ({
-        boardNumber: i + 1,
-        whiteChildId: r.whiteChildId,
-        blackChildId: r.blackChildId || null,
-      }));
-    if (pairings.length === 0) return setError("Add at least one pairing with a white player selected.");
-
-    try {
-      await api.createRound(tournamentId, { pairings }, token);
-      setPairingRows([{ whiteChildId: "", blackChildId: "" }]);
-      const updated = await api.rounds(tournamentId);
-      setRounds(updated);
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
-  async function handleResult(pairingId, result) {
-    setError(null);
-    try {
-      await api.submitResult(pairingId, { result }, token);
-      const updated = await api.rounds(tournamentId);
-      setRounds(updated);
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
-  if (!token) {
-    return (
-      <div style={{ maxWidth: 380 }}>
-        <span className="coord-label">a2 · coach console</span>
-        <h1 style={{ fontSize: 28 }}>Coach / Admin sign in</h1>
-        {loginError && <p style={{ color: "var(--burgundy)" }}>{loginError}</p>}
-        <form onSubmit={handleLogin} className="card">
-          <label>Email</label>
-          <input required type="email" value={creds.email} onChange={(e) => setCreds({ ...creds, email: e.target.value })} />
-          <label>Password</label>
-          <input required type="password" value={creds.password} onChange={(e) => setCreds({ ...creds, password: e.target.value })} />
-          <button className="btn btn-primary" style={{ marginTop: 16 }}>Sign in</button>
-        </form>
-        <p style={{ fontSize: 13, color: "var(--slate)" }}>Seed admin: admin@chessmasterclass.ca / password123</p>
-      </div>
-    );
+  async function toggleComplete(courseId, lesson) {
+    const completed = !lesson.progress?.[0]?.completedAt;
+    await api.markProgress({ childId, lessonId: lesson.id, completed }, token);
+    const updated = await api.courseLessons(childId, courseId, token);
+    setLessonsByCourse((prev) => ({ ...prev, [courseId]: updated }));
   }
 
   return (
     <div>
-      <span className="coord-label">a2 · coach console</span>
-      <h1 style={{ fontSize: 32 }}>Run the Tournament</h1>
-      <p style={{ marginTop: -8, marginBottom: 20 }}>
-        <a href="/coach/lessons">Manage learning content →</a>
+      <span className="coord-label">a3 · learning platform</span>
+      <h1 style={{ fontSize: 32 }}>After-Class Access</h1>
+      <p style={{ color: "var(--slate)", maxWidth: 520 }}>
+        Videos from every MasterClass, unlocked once your child is registered for the matching event.
       </p>
-      {error && <p style={{ color: "var(--burgundy)" }}>{error}</p>}
 
-      <label>Event</label>
-      <select value={eventId} onChange={(e) => setEventId(e.target.value)} style={{ maxWidth: 420, marginBottom: 20 }}>
-        <option value="">Select an event</option>
-        {events.map((ev) => (
-          <option key={ev.id} value={ev.id}>{ev.name} — {new Date(ev.date).toLocaleDateString()}</option>
-        ))}
-      </select>
-
-      {selectedEvent && !tournamentId && (
-        <div className="card" style={{ marginBottom: 20 }}>
-          <p>No tournament started yet for this event.</p>
-          <button className="btn btn-primary" onClick={handleStartTournament}>Start Tournament</button>
-        </div>
-      )}
-
-      {selectedEvent && tournamentId && (
+      {token && children.length > 1 && (
         <>
-          <div className="card" style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: 16 }}>Roster ({roster.length} confirmed)</h3>
-            {roster.map((r) => (
-              <div key={r.registrationId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
-                <span>{r.name}</span>
-                {r.checkedInAt ? (
-                  <span className="tag tag-live">checked in</span>
-                ) : (
-                  <button className="btn btn-brass" style={{ padding: "6px 12px", fontSize: 13 }} onClick={() => handleCheckIn(r.registrationId)}>
-                    Check in
-                  </button>
-                )}
-              </div>
+          <label>Viewing as</label>
+          <select value={childId} onChange={(e) => setChildId(e.target.value)} style={{ maxWidth: 320, marginBottom: 16 }}>
+            <option value="">Select a child</option>
+            {children.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
             ))}
-            {roster.length === 0 && <p style={{ color: "var(--slate)" }}>No confirmed registrations yet.</p>}
-          </div>
-
-          <div className="card" style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: 16 }}>New round — build pairings</h3>
-            <form onSubmit={handleCreateRound}>
-              {pairingRows.map((row, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10 }}>
-                  <span className="data" style={{ width: 24 }}>{i + 1}</span>
-                  <select
-                    value={row.whiteChildId}
-                    onChange={(e) => updatePairingRow(i, "whiteChildId", e.target.value)}
-                    style={{ flex: 1 }}
-                  >
-                    <option value="">White…</option>
-                    {roster.map((r) => (
-                      <option key={r.childId} value={r.childId}>{r.name}</option>
-                    ))}
-                  </select>
-                  <span style={{ color: "var(--slate)" }}>vs</span>
-                  <select
-                    value={row.blackChildId}
-                    onChange={(e) => updatePairingRow(i, "blackChildId", e.target.value)}
-                    style={{ flex: 1 }}
-                  >
-                    <option value="">— bye —</option>
-                    {roster.map((r) => (
-                      <option key={r.childId} value={r.childId}>{r.name}</option>
-                    ))}
-                  </select>
-                  {pairingRows.length > 1 && (
-                    <button type="button" onClick={() => removePairingRow(i)} style={{ background: "none", border: "none", color: "var(--burgundy)", cursor: "pointer" }}>
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))}
-              <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
-                <button type="button" className="btn" style={{ border: "1px solid var(--line)" }} onClick={addPairingRow}>
-                  + Add board
-                </button>
-                <button className="btn btn-primary">Start round {rounds.length + 1}</button>
-              </div>
-            </form>
-          </div>
-
-          {rounds.map((round) => (
-            <div key={round.id} className="card" style={{ marginBottom: 16 }}>
-              <h3 style={{ fontSize: 16 }}>Round {round.number}</h3>
-              {round.pairings.map((p) => (
-                <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap", gap: 8 }}>
-                  <span>
-                    Board {p.boardNumber}: <strong>{p.whiteChild.name}</strong> vs {p.blackChild ? <strong>{p.blackChild.name}</strong> : <em>bye</em>}
-                  </span>
-                  {p.result !== "PENDING" ? (
-                    <span className="tag tag-live">{p.result.replace("_", " ")}</span>
-                  ) : p.blackChild ? (
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button className="btn" style={{ border: "1px solid var(--line)", padding: "6px 10px", fontSize: 13 }} onClick={() => handleResult(p.id, "WHITE_WIN")}>White wins</button>
-                      <button className="btn" style={{ border: "1px solid var(--line)", padding: "6px 10px", fontSize: 13 }} onClick={() => handleResult(p.id, "DRAW")}>Draw</button>
-                      <button className="btn" style={{ border: "1px solid var(--line)", padding: "6px 10px", fontSize: 13 }} onClick={() => handleResult(p.id, "BLACK_WIN")}>Black wins</button>
-                    </div>
-                  ) : (
-                    <button className="btn" style={{ border: "1px solid var(--line)", padding: "6px 10px", fontSize: 13 }} onClick={() => handleResult(p.id, "WHITE_WIN")}>Award bye win</button>
-                  )}
-                </div>
-              ))}
-            </div>
-          ))}
-
-          <a href="/live" className="btn btn-primary">View public live standings →</a>
+          </select>
         </>
       )}
+
+      {courses.map((course) => {
+        const isOpen = expandedCourseId === course.id;
+        const data = lessonsByCourse[course.id];
+
+        return (
+          <div key={course.id} className="card" style={{ marginTop: 20 }}>
+            <span className="tag">{course.ageBracket}</span>
+            <h3>{course.title}</h3>
+            <p style={{ color: "var(--slate)", fontSize: 14 }}>{course.description}</p>
+            <p style={{ color: "var(--slate)", fontSize: 13 }}>{course.lessons.length} lesson(s)</p>
+
+            <button className="btn" style={{ border: "1px solid var(--line)" }} onClick={() => handleViewLessons(course)}>
+              {isOpen ? "Hide lessons" : "View lessons"}
+            </button>
+
+            {isOpen && (
+              <div style={{ marginTop: 16 }}>
+                {!token && (
+                  <p style={{ color: "var(--slate)" }}>
+                    <a href="/register">Register</a> your child for this MasterClass to unlock these lessons.
+                  </p>
+                )}
+
+                {token && !childId && (
+                  <p style={{ color: "var(--slate)" }}>Select which child above to view their lessons.</p>
+                )}
+
+                {token && childId && loadingCourseId === course.id && <p>Loading…</p>}
+
+                {token && childId && data?.locked && (
+                  <p style={{ color: "var(--burgundy)" }}>
+                    {data.message} — <a href="/register">register for this event</a> to unlock it.
+                  </p>
+                )}
+
+                {token && childId && Array.isArray(data) && (
+                  <div>
+                    {data.map((lesson) => {
+                      const embedUrl = toEmbedUrl(lesson.videoUrl);
+                      const completed = !!lesson.progress?.[0]?.completedAt;
+                      return (
+                        <div key={lesson.id} style={{ padding: "14px 0", borderBottom: "1px solid var(--line)" }}>
+                          <p style={{ fontWeight: 600, margin: "0 0 8px" }}>{lesson.title}</p>
+
+                          {embedUrl ? (
+                            <div style={{ position: "relative", paddingBottom: "56.25%", height: 0, marginBottom: 10 }}>
+                              <iframe
+                                src={embedUrl}
+                                title={lesson.title}
+                                allowFullScreen
+                                style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0, borderRadius: 8 }}
+                              />
+                            </div>
+                          ) : lesson.videoUrl ? (
+                            <a href={lesson.videoUrl} target="_blank" rel="noopener noreferrer" className="btn btn-brass" style={{ marginBottom: 10, display: "inline-block" }}>
+                              Watch video ↗
+                            </a>
+                          ) : (
+                            <p style={{ color: "var(--slate)", fontSize: 13 }}>Video coming soon.</p>
+                          )}
+
+                          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+                            <input type="checkbox" style={{ width: "auto" }} checked={completed} onChange={() => toggleComplete(course.id, lesson)} />
+                            Mark as watched
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {courses.length === 0 && <p>No courses published yet.</p>}
+
+      <p style={{ marginTop: 32 }}>
+        Want to test what you've learned? Try the <a href="/quiz">Chess Rules Test</a> and earn a badge.
+      </p>
     </div>
   );
 }

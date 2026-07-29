@@ -140,7 +140,7 @@ export default function CoachConsole() {
           <input required type="password" value={creds.password} onChange={(e) => setCreds({ ...creds, password: e.target.value })} />
           <button className="btn btn-primary" style={{ marginTop: 16 }}>Sign in</button>
         </form>
-        <p style={{ fontSize: 13, color: "var(--slate)" }}>Seed admin: admin@chessmasterclass.ca / password123</p>
+    
       </div>
     );
   }
@@ -148,8 +148,11 @@ export default function CoachConsole() {
   return (
     <div>
       <span className="coord-label">a2 · coach console</span>
-      <h1 style={{ fontSize: 32 }}>Run the Tournament</h1>
-      {error && <p style={{ color: "var(--burgundy)" }}>{error}</p>}
+<h1 style={{ fontSize: 32 }}>Run the Tournament</h1>
+<p style={{ marginTop: -8, marginBottom: 20 }}>
+  <a href="/coach/lessons">Manage learning content →</a>
+</p>
+{error && <p style={{ color: "var(--burgundy)" }}>{error}</p>}
 
       <label>Event</label>
       <select value={eventId} onChange={(e) => setEventId(e.target.value)} style={{ maxWidth: 420, marginBottom: 20 }}>
